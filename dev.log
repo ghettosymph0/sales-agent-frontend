@@ -1,0 +1,16 @@
+
+> sales-agent-frontend@0.1.0 dev
+> next dev
+
+▲ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.102:3000
+- Environments: .env.local
+
+✓ Starting...
+✓ Ready in 368ms
+API_BASE is: http://100.72.223.89:8000
+ GET /overview 200 in 153ms (compile: 85ms, render: 68ms)
+ GET /campaigns 200 in 55ms (compile: 37ms, render: 18ms)
+ GET /overview 200 in 33ms (compile: 11ms, render: 23ms)
+[?25h
