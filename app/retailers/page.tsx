@@ -197,6 +197,7 @@ export default function RetailersPage() {
                 <Link href="/retailers" className="text-white font-medium">Retailers</Link>
                 <Link href="/discovery" className="text-gray-400 hover:text-white transition">Discovery</Link>
                 <Link href="/import" className="text-gray-400 hover:text-white transition">Import</Link>
+                <Link href="/analytics" className="text-gray-400 hover:text-white transition">Analytics</Link>
               </div>
             </div>
           </div>

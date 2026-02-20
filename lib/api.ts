@@ -46,10 +46,109 @@ export async function processRetailer(url: string, generateFollowups = true) {
   return res.json();
 }
 
-export async function getResults(jobId: string): Promise<ProcessingResult> {
-  const res = await fetch(`${API_BASE}/api/results/${jobId}`);
+// =============================================================================
+// WHS ANALYTICS API
+// =============================================================================
+
+export interface AnalyticsSummary {
+  total_revenue_czk: number;
+  total_revenue_eur: number;
+  invoice_count: number;
+  unique_customers: number;
+  by_country: Record<string, number>;
+  by_customer: Record<string, number>;
+  by_month: Record<string, number>;
+  top_customers: [string, number][];
+}
+
+export interface ProductAnalytics {
+  products: {
+    name: string;
+    units: number;
+    revenue: number;
+  }[];
+  by_category: Record<string, number>;
+  by_product_line: Record<string, number>;
+}
+
+export interface Invoice {
+  id: string;
+  invoice_number: string;
+  invoice_date: string;
+  customer_legal_name: string;
+  country: string;
+  city: string;
+  total_czk: number;
+  total_eur?: number;
+  currency: string;
+  discount_notes?: string;
+  quarter?: string;
+  year?: number;
+  month_name?: string;
+}
+
+export interface RevenueByDoor {
+  doors: {
+    customer: string;
+    revenue_czk: number;
+  }[];
+  total_doors: number;
+}
+
+export interface MonthlyTrend {
+  months: {
+    month: string;
+    revenue_czk: number;
+    invoice_count: number;
+  }[];
+}
+
+export async function getAnalyticsSummary(quarter?: string, year?: number): Promise<AnalyticsSummary> {
+  const params = new URLSearchParams();
+  if (quarter) params.append("quarter", quarter);
+  if (year) params.append("year", year.toString());
+  
+  const res = await fetch(`${API_BASE}/api/analytics/summary?${params}`);
+  if (!res.ok) throw new Error("Failed to fetch analytics summary");
   return res.json();
 }
+
+export async function getProductAnalytics(quarter?: string, year?: number): Promise<ProductAnalytics> {
+  const params = new URLSearchParams();
+  if (quarter) params.append("quarter", quarter);
+  if (year) params.append("year", year.toString());
+  
+  const res = await fetch(`${API_BASE}/api/analytics/products?${params}`);
+  if (!res.ok) throw new Error("Failed to fetch product analytics");
+  return res.json();
+}
+
+export async function getInvoices(quarter?: string, year?: number): Promise<{ invoices: Invoice[] }> {
+  const params = new URLSearchParams();
+  if (quarter) params.append("quarter", quarter);
+  if (year) params.append("year", year.toString());
+  
+  const res = await fetch(`${API_BASE}/api/analytics/invoices?${params}`);
+  if (!res.ok) throw new Error("Failed to fetch invoices");
+  return res.json();
+}
+
+export async function getRevenueByDoor(quarter?: string, year?: number): Promise<RevenueByDoor> {
+  const params = new URLSearchParams();
+  if (quarter) params.append("quarter", quarter);
+  if (year) params.append("year", year.toString());
+  
+  const res = await fetch(`${API_BASE}/api/analytics/by-door?${params}`);
+  if (!res.ok) throw new Error("Failed to fetch revenue by door");
+  return res.json();
+}
+
+export async function getMonthlyTrends(year: number = 2025): Promise<MonthlyTrend> {
+  const res = await fetch(`${API_BASE}/api/analytics/monthly-trends?year=${year}`);
+  if (!res.ok) throw new Error("Failed to fetch monthly trends");
+  return res.json();
+}
+
 
 export async function listResults() {
   const res = await fetch(`${API_BASE}/api/results`);
