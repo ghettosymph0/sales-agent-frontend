@@ -170,9 +170,9 @@ export default function RetailersPage() {
     }
   }
 
-  const countries = Array.from(new Set(allRetailers.map(r => r.country).filter(Boolean))).sort()
-  const statuses = Array.from(new Set(allRetailers.map(r => r.enrichment_status).filter(Boolean))).sort()
-  const relationships = Array.from(new Set(allRetailers.map(r => r.relationship_status).filter(Boolean))).sort()
+  const countries = Array.from(new Set(allRetailers.map(r => r.country).filter((c): c is string => Boolean(c)))).sort()
+  const statuses = Array.from(new Set(allRetailers.map(r => r.enrichment_status).filter((s): s is string => Boolean(s)))).sort()
+  const relationships = Array.from(new Set(allRetailers.map(r => r.relationship_status).filter((r): r is string => Boolean(r)))).sort()
   
   // Extract all unique brands from source_brands arrays
   const brands = Array.from(
