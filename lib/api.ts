@@ -149,6 +149,52 @@ export async function getMonthlyTrends(year: number = 2025): Promise<MonthlyTren
   return res.json();
 }
 
+export interface AnnualAnalytics {
+  year: number;
+  revenue: {
+    total_czk: number;
+    prev_year_czk: number;
+    yoy_growth_percent: number;
+  };
+  kpis: {
+    total_invoices: number;
+    avg_order_value_czk: number;
+    aov_growth_percent: number;
+    avg_customer_value_czk: number;
+    total_customers: number;
+    new_customers: number;
+    retained_customers: number;
+    churned_customers: number;
+    retention_rate_percent: number;
+  };
+  quarterly_breakdown: Record<string, {
+    revenue_czk: number;
+    invoice_count: number;
+    unique_customers: number;
+  }>;
+  top_customers: {
+    customer: string;
+    revenue_czk: number;
+    order_count: number;
+  }[];
+  top_products: {
+    name: string;
+    units: number;
+    revenue_czk: number;
+  }[];
+  top_product_lines: {
+    line: string;
+    revenue_czk: number;
+  }[];
+  by_country: Record<string, number>;
+}
+
+export async function getAnnualAnalytics(year: number = 2025): Promise<AnnualAnalytics> {
+  const res = await fetch(`${API_BASE}/api/analytics/annual?year=${year}`);
+  if (!res.ok) throw new Error("Failed to fetch annual analytics");
+  return res.json();
+}
+
 
 export async function listResults() {
   const res = await fetch(`${API_BASE}/api/results`);

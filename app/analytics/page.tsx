@@ -7,19 +7,31 @@ import {
   getProductAnalytics,
   getRevenueByDoor,
   getMonthlyTrends,
+  getAnnualAnalytics,
   AnalyticsSummary,
   ProductAnalytics,
   RevenueByDoor,
   MonthlyTrend,
+  AnnualAnalytics,
 } from "@/lib/api"
+
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat("cs-CZ", {
+    style: "currency",
+    currency: "CZK",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount)
+}
 
 export default function AnalyticsPage() {
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
   const [products, setProducts] = useState<ProductAnalytics | null>(null)
   const [byDoor, setByDoor] = useState<RevenueByDoor | null>(null)
   const [monthly, setMonthly] = useState<MonthlyTrend | null>(null)
+  const [annual, setAnnual] = useState<AnnualAnalytics | null>(null)
   const [loading, setLoading] = useState(true)
-  const [selectedQuarter, setSelectedQuarter] = useState("Q4")
+  const [selectedQuarter, setSelectedQuarter] = useState("Annual")
   const [selectedYear, setSelectedYear] = useState(2025)
 
   useEffect(() => {
@@ -29,16 +41,27 @@ export default function AnalyticsPage() {
   const loadAnalytics = async () => {
     setLoading(true)
     try {
-      const [summaryData, productsData, doorData, monthlyData] = await Promise.all([
-        getAnalyticsSummary(selectedQuarter, selectedYear),
-        getProductAnalytics(selectedQuarter, selectedYear),
-        getRevenueByDoor(selectedQuarter, selectedYear),
-        getMonthlyTrends(selectedYear),
-      ])
-      setSummary(summaryData)
-      setProducts(productsData)
-      setByDoor(doorData)
-      setMonthly(monthlyData)
+      if (selectedQuarter === "Annual") {
+        // Load annual analytics
+        const annualData = await getAnnualAnalytics(selectedYear)
+        setAnnual(annualData)
+        // Also load monthly for the chart
+        const monthlyData = await getMonthlyTrends(selectedYear)
+        setMonthly(monthlyData)
+      } else {
+        // Load quarterly analytics
+        const [summaryData, productsData, doorData, monthlyData] = await Promise.all([
+          getAnalyticsSummary(selectedQuarter, selectedYear),
+          getProductAnalytics(selectedQuarter, selectedYear),
+          getRevenueByDoor(selectedQuarter, selectedYear),
+          getMonthlyTrends(selectedYear),
+        ])
+        setSummary(summaryData)
+        setProducts(productsData)
+        setByDoor(doorData)
+        setMonthly(monthlyData)
+        setAnnual(null)
+      }
     } catch (error) {
       console.error("Failed to load analytics:", error)
     } finally {
@@ -46,16 +69,7 @@ export default function AnalyticsPage() {
     }
   }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("cs-CZ", {
-      style: "currency",
-      currency: "CZK",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount)
-  }
-
-  if (loading || !summary || !products || !byDoor || !monthly) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
@@ -73,6 +87,20 @@ export default function AnalyticsPage() {
           </div>
           <p className="text-gray-400">Loading analytics...</p>
         </div>
+      </div>
+    )
+  }
+
+  // For annual view
+  if (selectedQuarter === "Annual" && annual) {
+    return <AnnualAnalyticsView annual={annual} monthly={monthly} selectedYear={selectedYear} setSelectedYear={setSelectedYear} setSelectedQuarter={setSelectedQuarter} formatCurrency={formatCurrency} />
+  }
+
+  // For quarterly view, ensure data is loaded
+  if (!summary || !products || !byDoor || !monthly) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <p className="text-gray-400">No data available for this period</p>
       </div>
     )
   }
@@ -121,6 +149,7 @@ export default function AnalyticsPage() {
               onChange={(e) => setSelectedQuarter(e.target.value)}
               className="bg-gray-900 border border-gray-800 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500"
             >
+              <option value="Annual">Annual</option>
               <option value="Q1">Q1</option>
               <option value="Q2">Q2</option>
               <option value="Q3">Q3</option>
@@ -406,5 +435,335 @@ function GlobeIcon() {
         </linearGradient>
       </defs>
     </svg>
+  )
+}
+
+function TrophyIcon() {
+  return (
+    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
+      <path d="M8 21h8M12 17v4M17 4h2a2 2 0 012 2v1a4 4 0 01-4 4M7 4H5a2 2 0 00-2 2v1a4 4 0 004 4M12 17a5 5 0 01-5-5V4h10v8a5 5 0 01-5 5z" stroke="url(#gold-grad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <defs>
+        <linearGradient id="gold-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#F59E0B" />
+          <stop offset="100%" stopColor="#EAB308" />
+        </linearGradient>
+      </defs>
+    </svg>
+  )
+}
+
+function ChartBarIcon() {
+  return (
+    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
+      <rect x="4" y="14" width="4" height="6" rx="1" fill="url(#bar-grad)"/>
+      <rect x="10" y="10" width="4" height="10" rx="1" fill="url(#bar-grad)"/>
+      <rect x="16" y="6" width="4" height="14" rx="1" fill="url(#bar-grad)"/>
+      <defs>
+        <linearGradient id="bar-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#10B981" />
+          <stop offset="100%" stopColor="#059669" />
+        </linearGradient>
+      </defs>
+    </svg>
+  )
+}
+
+// Annual Analytics View Component
+function AnnualAnalyticsView({ 
+  annual, 
+  monthly, 
+  selectedYear, 
+  setSelectedYear, 
+  setSelectedQuarter,
+  formatCurrency 
+}: { 
+  annual: AnnualAnalytics; 
+  monthly: MonthlyTrend | null;
+  selectedYear: number;
+  setSelectedYear: (year: number) => void;
+  setSelectedQuarter: (quarter: string) => void;
+  formatCurrency: (amount: number) => string;
+}) {
+  return (
+    <div className="min-h-screen bg-black text-white">
+      {/* Navigation */}
+      <nav className="border-b border-gray-800 bg-black/50 backdrop-blur-xl sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-8">
+              <h1 className="text-xl font-bold">ALEXMONHART</h1>
+              <div className="flex gap-6">
+                <Link href="/overview" className="text-gray-400 hover:text-white transition">Dashboard</Link>
+                <Link href="/campaigns" className="text-gray-400 hover:text-white transition">Campaigns</Link>
+                <Link href="/retailers" className="text-gray-400 hover:text-white transition">Retailers</Link>
+                <Link href="/discovery" className="text-gray-400 hover:text-white transition">Discovery</Link>
+                <Link href="/import" className="text-gray-400 hover:text-white transition">Import</Link>
+                <Link href="/analytics" className="text-white font-medium">Analytics</Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Header */}
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h2 className="text-4xl font-bold mb-2">
+              <span className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 bg-clip-text text-transparent">
+                {selectedYear} Annual Report
+              </span>
+            </h2>
+            <p className="text-gray-400">Comprehensive wholesale business performance</p>
+          </div>
+          
+          {/* Filter Controls */}
+          <div className="flex gap-4">
+            <select
+              value="Annual"
+              onChange={(e) => setSelectedQuarter(e.target.value)}
+              className="bg-gray-900 border border-gray-800 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500"
+            >
+              <option value="Annual">Annual</option>
+              <option value="Q1">Q1</option>
+              <option value="Q2">Q2</option>
+              <option value="Q3">Q3</option>
+              <option value="Q4">Q4</option>
+            </select>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="bg-gray-900 border border-gray-800 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500"
+            >
+              <option value={2024}>2024</option>
+              <option value={2025}>2025</option>
+              <option value={2026}>2026</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Key Annual Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <MetricCard
+            label="Annual Revenue"
+            value={formatCurrency(annual.revenue.total_czk)}
+            subtitle={`${annual.kpis.total_invoices} invoices`}
+            gradient="from-yellow-500 to-orange-500"
+          />
+          <MetricCard
+            label="YoY Growth"
+            value={`${annual.revenue.yoy_growth_percent >= 0 ? '+' : ''}${annual.revenue.yoy_growth_percent}%`}
+            subtitle={`vs ${formatCurrency(annual.revenue.prev_year_czk)} last year`}
+            gradient={annual.revenue.yoy_growth_percent >= 0 ? "from-green-500 to-emerald-500" : "from-red-500 to-pink-500"}
+          />
+          <MetricCard
+            label="Total Customers"
+            value={annual.kpis.total_customers.toString()}
+            subtitle={`${annual.kpis.new_customers} new this year`}
+            gradient="from-purple-500 to-pink-500"
+          />
+          <MetricCard
+            label="Avg Order Value"
+            value={formatCurrency(annual.kpis.avg_order_value_czk)}
+            subtitle={`${annual.kpis.aov_growth_percent >= 0 ? '+' : ''}${annual.kpis.aov_growth_percent}% vs last year`}
+            gradient="from-blue-500 to-cyan-500"
+          />
+        </div>
+
+        {/* KPIs Section */}
+        <div className="mb-8">
+          <ChartCard title="Key Performance Indicators" icon={<ChartBarIcon />}>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div className="text-center p-4 bg-gray-800/50 rounded-lg">
+                <div className="text-3xl font-bold text-green-400 mb-1">{annual.kpis.retention_rate_percent}%</div>
+                <div className="text-sm text-gray-400">Customer Retention</div>
+                <div className="text-xs text-gray-500 mt-1">{annual.kpis.retained_customers} returning customers</div>
+              </div>
+              <div className="text-center p-4 bg-gray-800/50 rounded-lg">
+                <div className="text-3xl font-bold text-blue-400 mb-1">{formatCurrency(annual.kpis.avg_customer_value_czk)}</div>
+                <div className="text-sm text-gray-400">Avg Customer Value</div>
+                <div className="text-xs text-gray-500 mt-1">Annual spend per customer</div>
+              </div>
+              <div className="text-center p-4 bg-gray-800/50 rounded-lg">
+                <div className="text-3xl font-bold text-purple-400 mb-1">{annual.kpis.new_customers}</div>
+                <div className="text-sm text-gray-400">New Customers</div>
+                <div className="text-xs text-gray-500 mt-1">First-time buyers in {selectedYear}</div>
+              </div>
+              <div className="text-center p-4 bg-gray-800/50 rounded-lg">
+                <div className="text-3xl font-bold text-orange-400 mb-1">{annual.kpis.churned_customers}</div>
+                <div className="text-sm text-gray-400">Churned</div>
+                <div className="text-xs text-gray-500 mt-1">Did not reorder from last year</div>
+              </div>
+            </div>
+          </ChartCard>
+        </div>
+
+        {/* Quarterly Breakdown */}
+        <div className="mb-8">
+          <ChartCard title="Quarterly Performance" icon={<LineChartIcon />}>
+            <div className="grid grid-cols-4 gap-4">
+              {["Q1", "Q2", "Q3", "Q4"].map((q) => {
+                const data = annual.quarterly_breakdown[q] || { revenue_czk: 0, invoice_count: 0, unique_customers: 0 }
+                const maxRevenue = Math.max(...Object.values(annual.quarterly_breakdown).map(d => d.revenue_czk))
+                return (
+                  <div key={q} className="text-center">
+                    <div className="text-lg font-semibold text-gray-300 mb-2">{q}</div>
+                    <div className="h-32 bg-gray-800/50 rounded-lg flex items-end justify-center p-2 mb-2">
+                      <div 
+                        className="w-full bg-gradient-to-t from-purple-600 to-pink-500 rounded"
+                        style={{ height: `${maxRevenue > 0 ? (data.revenue_czk / maxRevenue) * 100 : 0}%`, minHeight: data.revenue_czk > 0 ? '10%' : '0' }}
+                      />
+                    </div>
+                    <div className="text-sm font-semibold text-white">{formatCurrency(data.revenue_czk)}</div>
+                    <div className="text-xs text-gray-500">{data.invoice_count} orders</div>
+                    <div className="text-xs text-gray-500">{data.unique_customers} customers</div>
+                  </div>
+                )
+              })}
+            </div>
+          </ChartCard>
+        </div>
+
+        {/* Best Performers Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Top Customers */}
+          <ChartCard title="Top Customers" icon={<TrophyIcon />}>
+            <div className="space-y-3">
+              {annual.top_customers.slice(0, 8).map((customer, index) => (
+                <div key={index} className="flex items-center gap-4">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center text-sm font-bold">
+                    {index + 1}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm text-gray-300 truncate">{customer.customer}</span>
+                      <span className="text-sm font-semibold">{formatCurrency(customer.revenue_czk)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="h-2 bg-gray-800 rounded-full overflow-hidden flex-1 mr-4">
+                        <div
+                          className="h-full bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full"
+                          style={{
+                            width: `${(customer.revenue_czk / annual.top_customers[0].revenue_czk) * 100}%`,
+                          }}
+                        />
+                      </div>
+                      <span className="text-xs text-gray-500">{customer.order_count} orders</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ChartCard>
+
+          {/* Top Products */}
+          <ChartCard title="Top Products" icon={<ProductIcon />}>
+            <div className="space-y-3">
+              {annual.top_products.slice(0, 8).map((product, index) => (
+                <div key={index} className="flex items-center gap-4">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-sm font-bold">
+                    {index + 1}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm text-gray-300 truncate">{product.name}</span>
+                      <span className="text-sm font-semibold">{formatCurrency(product.revenue_czk)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="h-2 bg-gray-800 rounded-full overflow-hidden flex-1 mr-4">
+                        <div
+                          className="h-full bg-gradient-to-r from-green-500 to-emerald-500 rounded-full"
+                          style={{
+                            width: `${(product.revenue_czk / annual.top_products[0].revenue_czk) * 100}%`,
+                          }}
+                        />
+                      </div>
+                      <span className="text-xs text-gray-500">{product.units} units</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ChartCard>
+        </div>
+
+        {/* Product Lines & Country Breakdown */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Revenue by Product Line */}
+          <ChartCard title="Revenue by Product Line" icon={<LineChartIcon />}>
+            <div className="space-y-4">
+              {annual.top_product_lines.filter(l => l.line !== "Other").map((line, index) => (
+                <div key={index}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-gray-300">{line.line}</span>
+                    <span className="text-sm font-semibold">{formatCurrency(line.revenue_czk)}</span>
+                  </div>
+                  <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
+                      style={{
+                        width: `${(line.revenue_czk / annual.top_product_lines[0].revenue_czk) * 100}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ChartCard>
+
+          {/* Country Breakdown */}
+          <ChartCard title="Revenue by Country" icon={<GlobeIcon />}>
+            <div className="grid grid-cols-2 gap-4">
+              {Object.entries(annual.by_country)
+                .sort((a, b) => b[1] - a[1])
+                .map(([country, revenue], index) => (
+                  <div key={index} className="bg-gray-800/50 rounded-lg p-4">
+                    <div className="text-2xl mb-1">
+                      {country === "Czechia" && "CZ"}
+                      {country === "Lithuania" && "LT"}
+                      {country === "Sweden" && "SE"}
+                      {country === "Poland" && "PL"}
+                      {country === "Germany" && "DE"}
+                      {country === "France" && "FR"}
+                    </div>
+                    <div className="font-semibold text-lg mb-1">{formatCurrency(revenue)}</div>
+                    <div className="text-xs text-gray-400">{country}</div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {((revenue / annual.revenue.total_czk) * 100).toFixed(1)}% of total
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </ChartCard>
+        </div>
+
+        {/* Monthly Trends */}
+        {monthly && (
+          <ChartCard title="Monthly Revenue Trends" icon={<TrendIcon />}>
+            <div className="space-y-4">
+              {monthly.months.map((month, index) => (
+                <div key={index}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-gray-300">{month.month}</span>
+                    <div className="text-right">
+                      <span className="text-sm font-semibold block">{formatCurrency(month.revenue_czk)}</span>
+                      <span className="text-xs text-gray-500">{month.invoice_count} invoices</span>
+                    </div>
+                  </div>
+                  <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-orange-500 to-red-500 rounded-full"
+                      style={{
+                        width: `${(month.revenue_czk / Math.max(...monthly.months.map(m => m.revenue_czk))) * 100}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ChartCard>
+        )}
+      </div>
+    </div>
   )
 }
