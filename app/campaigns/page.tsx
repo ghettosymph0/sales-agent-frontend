@@ -4,12 +4,16 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { getAirtableCampaigns, AirtableCampaign, updateCampaignDate, sendCampaignEmail, markCampaignResponded, getCampaignsCsvExportUrl } from "@/lib/api"
 
+// Default follow-up interval in days
+const DEFAULT_FOLLOWUP_DAYS = 14
+
 export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<AirtableCampaign[]>([])
   const [filteredCampaigns, setFilteredCampaigns] = useState<AirtableCampaign[]>([])
   const [selectedCampaign, setSelectedCampaign] = useState<AirtableCampaign | null>(null)
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'sent' | 'overdue' | 'waiting'>('all')
+  const [followUpDays, setFollowUpDays] = useState(DEFAULT_FOLLOWUP_DAYS)
 
   useEffect(() => {
     loadCampaigns()
@@ -101,9 +105,9 @@ export default function CampaignsPage() {
     const now = new Date()
     const daysSinceSent = Math.floor((now.getTime() - sent.getTime()) / (1000 * 60 * 60 * 24))
 
-    // Follow-up 1 (Day 7)
+    // Follow-up 1 (Day X where X = followUpDays)
     if (!followup1Date) {
-      const followup1Due = new Date(sent.getTime() + 7 * 24 * 60 * 60 * 1000)
+      const followup1Due = new Date(sent.getTime() + followUpDays * 24 * 60 * 60 * 1000)
       const timeUntilDue = followup1Due.getTime() - now.getTime()
       
       if (timeUntilDue > 0) {
@@ -125,9 +129,9 @@ export default function CampaignsPage() {
       }
     }
 
-    // Follow-up 2 (Day 14 from initial)
+    // Follow-up 2 (Day 2X from initial)
     if (!followup2Date) {
-      const followup2Due = new Date(sent.getTime() + 14 * 24 * 60 * 60 * 1000)
+      const followup2Due = new Date(sent.getTime() + (followUpDays * 2) * 24 * 60 * 60 * 1000)
       const timeUntilDue = followup2Due.getTime() - now.getTime()
       
       if (timeUntilDue > 0) {
@@ -149,9 +153,9 @@ export default function CampaignsPage() {
       }
     }
 
-    // Follow-up 3 (Day 21 from initial)
+    // Follow-up 3 (Day 3X from initial)
     if (!followup3Date) {
-      const followup3Due = new Date(sent.getTime() + 21 * 24 * 60 * 60 * 1000)
+      const followup3Due = new Date(sent.getTime() + (followUpDays * 3) * 24 * 60 * 60 * 1000)
       const timeUntilDue = followup3Due.getTime() - now.getTime()
       
       if (timeUntilDue > 0) {
@@ -271,6 +275,22 @@ export default function CampaignsPage() {
           >
             Waiting Response ({campaigns.filter(c => c.sent_timestamp && !c.retailer_responded).length})
           </button>
+          
+          {/* Follow-up Interval Setting */}
+          <div className="ml-auto flex items-center gap-3 bg-gray-800 px-4 py-2 rounded-lg border border-gray-700">
+            <span className="text-gray-400 text-sm">Follow-up every</span>
+            <select
+              value={followUpDays}
+              onChange={(e) => setFollowUpDays(Number(e.target.value))}
+              className="bg-gray-700 border border-gray-600 rounded px-3 py-1 text-white font-medium focus:outline-none focus:border-blue-500"
+            >
+              <option value={7}>7 days</option>
+              <option value={10}>10 days</option>
+              <option value={14}>14 days</option>
+              <option value={21}>21 days</option>
+              <option value={30}>30 days</option>
+            </select>
+          </div>
         </div>
 
         {loading ? (
@@ -302,6 +322,7 @@ export default function CampaignsPage() {
                 calculateStatus={calculateFollowUpStatus}
                 onViewDetails={() => setSelectedCampaign(campaign)}
                 onUpdateCampaign={updateCampaignInState}
+                followUpDays={followUpDays}
               />
             ))}
           </div>
@@ -309,14 +330,14 @@ export default function CampaignsPage() {
 
         {/* Modal */}
         {selectedCampaign && (
-          <CampaignModal campaign={selectedCampaign} onClose={() => setSelectedCampaign(null)} />
+          <CampaignModal campaign={selectedCampaign} onClose={() => setSelectedCampaign(null)} followUpDays={followUpDays} />
         )}
       </div>
     </div>
   )
 }
 
-function CampaignCard({ campaign, calculateStatus, onViewDetails, onUpdateCampaign }: any) {
+function CampaignCard({ campaign, calculateStatus, onViewDetails, onUpdateCampaign, followUpDays }: any) {
   const [sentDate, setSentDate] = useState(campaign.sent_timestamp || '')
   const [followup1Date, setFollowup1Date] = useState(campaign.followup1_sent_date || '')
   const [followup2Date, setFollowup2Date] = useState(campaign.followup2_sent_date || '')
@@ -466,7 +487,7 @@ function CampaignCard({ campaign, calculateStatus, onViewDetails, onUpdateCampai
           {/* Follow-up 1 Date */}
           {sentDate && (
             <DateField
-              label="Follow-up 1 Sent (Day 7)"
+              label={`Follow-up 1 Sent (Day ${followUpDays})`}
               value={followup1Date}
               isEditing={editingField === 'followup1'}
               isSaving={saving}
@@ -480,7 +501,7 @@ function CampaignCard({ campaign, calculateStatus, onViewDetails, onUpdateCampai
           {/* Follow-up 2 Date */}
           {followup1Date && (
             <DateField
-              label="Follow-up 2 Sent (Day 14)"
+              label={`Follow-up 2 Sent (Day ${followUpDays * 2})`}
               value={followup2Date}
               isEditing={editingField === 'followup2'}
               isSaving={saving}
@@ -494,7 +515,7 @@ function CampaignCard({ campaign, calculateStatus, onViewDetails, onUpdateCampai
           {/* Follow-up 3 Date */}
           {followup2Date && (
             <DateField
-              label="Follow-up 3 Sent (Day 21)"
+              label={`Follow-up 3 Sent (Day ${followUpDays * 3})`}
               value={followup3Date}
               isEditing={editingField === 'followup3'}
               isSaving={saving}
@@ -849,7 +870,7 @@ function EmailVariationPreview({ variant, email, gradient }: { variant: string; 
   )
 }
 
-function CampaignModal({ campaign, onClose }: { campaign: AirtableCampaign; onClose: () => void }) {
+function CampaignModal({ campaign, onClose, followUpDays }: { campaign: AirtableCampaign; onClose: () => void; followUpDays: number }) {
   const [activeTab, setActiveTab] = useState<'intro' | 'followups'>('intro')
 
   return (
@@ -904,9 +925,9 @@ function CampaignModal({ campaign, onClose }: { campaign: AirtableCampaign; onCl
             </div>
           ) : (
             <div className="space-y-6">
-              <EmailFull email={campaign.followup_1} title="Follow-up 1 (Day 7)" gradient="from-orange-500 to-red-500" />
-              <EmailFull email={campaign.followup_2} title="Follow-up 2 (Day 14)" gradient="from-pink-500 to-rose-500" />
-              <EmailFull email={campaign.followup_3} title="Follow-up 3 (Day 21)" gradient="from-violet-500 to-purple-500" />
+              <EmailFull email={campaign.followup_1} title={`Follow-up 1 (Day ${followUpDays})`} gradient="from-orange-500 to-red-500" />
+              <EmailFull email={campaign.followup_2} title={`Follow-up 2 (Day ${followUpDays * 2})`} gradient="from-pink-500 to-rose-500" />
+              <EmailFull email={campaign.followup_3} title={`Follow-up 3 (Day ${followUpDays * 3})`} gradient="from-violet-500 to-purple-500" />
             </div>
           )}
         </div>
