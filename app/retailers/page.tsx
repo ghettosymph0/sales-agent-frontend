@@ -187,7 +187,7 @@ export default function RetailersPage() {
   const handleEnrichAllPending = async () => {
     // Count pending retailers (have URL but no email)
     const pendingCount = allRetailers.filter(r => 
-      (r.website_url || r.website) && !r.contact_emails
+      r.url && (!r.contact_emails || r.contact_emails.length === 0)
     ).length
 
     if (pendingCount === 0) {
@@ -211,9 +211,7 @@ export default function RetailersPage() {
 
   const handleFindMissingUrls = async () => {
     // Count retailers without URLs
-    const missingCount = allRetailers.filter(r => 
-      !r.website_url && !r.website
-    ).length
+    const missingCount = allRetailers.filter(r => !r.url).length
 
     if (missingCount === 0) {
       alert('All retailers already have website URLs.')
