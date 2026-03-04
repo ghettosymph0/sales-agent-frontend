@@ -8,12 +8,14 @@ export default function RetailersPage() {
   const [allRetailers, setAllRetailers] = useState<AirtableRetailer[]>([])
   const [filteredRetailers, setFilteredRetailers] = useState<AirtableRetailer[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [total, setTotal] = useState(0)
   const [selectedRetailers, setSelectedRetailers] = useState<Set<string>>(new Set())
   const [generatingCampaigns, setGeneratingCampaigns] = useState(false)
   const [enriching, setEnriching] = useState(false)
   const tableScrollRef = useRef<HTMLDivElement>(null)
   const topScrollRef = useRef<HTMLDivElement>(null)
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null)
   
   // Filters
   const [countryFilter, setCountryFilter] = useState("")
@@ -71,18 +73,28 @@ export default function RetailersPage() {
     applyFilters()
   }, [countryFilter, statusFilter, relationshipFilter, brandFilter, allRetailers])
 
-  const loadRetailers = async () => {
-    setLoading(true)
+  const loadRetailers = async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true)
+    } else {
+      setLoading(true)
+    }
     try {
       // Load ALL retailers
       const data = await getAirtableRetailers(0, 1000)
       setAllRetailers(data.retailers || [])
       setTotal(data.total)
+      setLastRefreshed(new Date())
     } catch (error) {
       console.error("Failed to load retailers:", error)
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
+  }
+
+  const handleRefresh = () => {
+    loadRetailers(true)
   }
 
   const applyFilters = () => {
@@ -208,14 +220,36 @@ export default function RetailersPage() {
         <div className="mb-8">
           <div className="flex justify-between items-start mb-4">
             <div>
-              <h2 className="text-4xl font-bold mb-2">
-                Retailer <span className="bg-gradient-to-r from-green-500 to-emerald-500 bg-clip-text text-transparent">Database</span>
-              </h2>
+              <div className="flex items-center gap-4 mb-2">
+                <h2 className="text-4xl font-bold">
+                  Retailer <span className="bg-gradient-to-r from-green-500 to-emerald-500 bg-clip-text text-transparent">Database</span>
+                </h2>
+                <button
+                  onClick={handleRefresh}
+                  disabled={refreshing || loading}
+                  className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 transition disabled:opacity-50"
+                  title="Refresh retailers"
+                >
+                  <svg 
+                    className={`w-5 h-5 text-gray-400 ${refreshing ? 'animate-spin' : ''}`} 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </button>
+              </div>
               <p className="text-gray-400">
                 Showing {filteredRetailers.length} of {total} total retailers
                 {selectedRetailers.size > 0 && (
                   <span className="ml-2 text-blue-400 font-medium">
                     • {selectedRetailers.size} selected
+                  </span>
+                )}
+                {lastRefreshed && (
+                  <span className="ml-2 text-gray-600 text-sm">
+                    • Updated {lastRefreshed.toLocaleTimeString()}
                   </span>
                 )}
               </p>
