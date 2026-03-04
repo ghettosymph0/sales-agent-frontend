@@ -10,13 +10,24 @@ interface ParsedEmail {
   status: "new" | "existing";
 }
 
+type ImportMode = "email" | "url";
+
 export default function ImportPage() {
+  const [importMode, setImportMode] = useState<ImportMode>("url")
+  
+  // Email import state
   const [emailText, setEmailText] = useState("")
   const [parsedEmails, setParsedEmails] = useState<string[]>([])
   const [isParsing, setIsParsing] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
   const [importResults, setImportResults] = useState<any>(null)
   const [error, setError] = useState("")
+  
+  // URL import state
+  const [retailerUrl, setRetailerUrl] = useState("")
+  const [retailerName, setRetailerName] = useState("")
+  const [isAddingUrl, setIsAddingUrl] = useState(false)
+  const [urlResult, setUrlResult] = useState<any>(null)
 
   const handleParse = async () => {
     if (!emailText.trim()) {
@@ -110,6 +121,59 @@ export default function ImportPage() {
     }
   }
 
+  const handleAddByUrl = async () => {
+    if (!retailerUrl.trim()) {
+      setError("Please enter a retailer URL")
+      return
+    }
+
+    // Validate URL format
+    let url = retailerUrl.trim()
+    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+      url = "https://" + url
+    }
+
+    setError("")
+    setIsAddingUrl(true)
+    setUrlResult(null)
+
+    try {
+      const response = await fetch(`${API_BASE}/api/import/add-by-url`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          url: url,
+          name: retailerName.trim() || undefined
+        })
+      })
+
+      if (!response.ok) {
+        let errorMessage = "Failed to add retailer"
+        try {
+          const error = await response.json()
+          errorMessage = error.detail || error.message || errorMessage
+        } catch (e) {
+          errorMessage = `Server error (${response.status})`
+        }
+        throw new Error(errorMessage)
+      }
+
+      const data = await response.json()
+      setUrlResult(data)
+
+      // Clear form on success
+      if (data.success) {
+        setRetailerUrl("")
+        setRetailerName("")
+      }
+    } catch (err: any) {
+      console.error("Add by URL error:", err)
+      setError(err.message || "Failed to add retailer")
+    } finally {
+      setIsAddingUrl(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Navigation */}
@@ -137,11 +201,185 @@ export default function ImportPage() {
         {/* Header */}
         <div className="mb-8">
           <h2 className="text-4xl font-bold mb-2">
-            Import <span className="bg-gradient-to-r from-green-500 to-emerald-500 bg-clip-text text-transparent">Email Lists</span>
+            Import <span className="bg-gradient-to-r from-green-500 to-emerald-500 bg-clip-text text-transparent">Retailers</span>
           </h2>
-          <p className="text-gray-400">Upload retailer email addresses to enrich with company info and add to your database</p>
+          <p className="text-gray-400">Add retailers by URL or email address - we'll automatically enrich with contact info</p>
         </div>
 
+        {/* Mode Tabs */}
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => { setImportMode("url"); setError(""); setUrlResult(null); }}
+            className={`px-6 py-3 rounded-lg font-medium transition ${
+              importMode === "url"
+                ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+            }`}
+          >
+            Add by URL
+          </button>
+          <button
+            onClick={() => { setImportMode("email"); setError(""); setImportResults(null); }}
+            className={`px-6 py-3 rounded-lg font-medium transition ${
+              importMode === "email"
+                ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+            }`}
+          >
+            Import Email List
+          </button>
+        </div>
+
+        {/* URL Import Mode */}
+        {importMode === "url" && (
+          <>
+            {/* URL Success */}
+            {urlResult && urlResult.success && (
+              <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-6 mb-6">
+                <div className="flex items-start gap-3 mb-4">
+                  <svg className="w-6 h-6 text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-green-400 mb-2">Retailer Added!</h3>
+                    <div className="text-sm text-gray-300 space-y-1">
+                      <p><strong>Name:</strong> {urlResult.retailer?.name}</p>
+                      <p><strong>URL:</strong> {urlResult.retailer?.url}</p>
+                      {urlResult.retailer?.emails && urlResult.retailer.emails.length > 0 && (
+                        <p><strong>Emails Found:</strong> {urlResult.retailer.emails.join(", ")}</p>
+                      )}
+                      {urlResult.retailer?.country && (
+                        <p><strong>Country:</strong> {urlResult.retailer.country}</p>
+                      )}
+                      <p><strong>Status:</strong> {urlResult.is_new ? "New retailer added" : "Retailer already exists (updated)"}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <Link 
+                    href="/retailers"
+                    className="px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg font-medium transition text-sm"
+                  >
+                    View Retailers →
+                  </Link>
+                  <button
+                    onClick={() => setUrlResult(null)}
+                    className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg font-medium transition text-sm"
+                  >
+                    Add Another
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* URL Input Form */}
+            {!urlResult && (
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 mb-8">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Retailer Website URL <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={retailerUrl}
+                      onChange={(e) => setRetailerUrl(e.target.value)}
+                      placeholder="https://www.example-store.com"
+                      disabled={isAddingUrl}
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 disabled:opacity-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Retailer Name <span className="text-gray-500">(optional - we'll auto-detect)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={retailerName}
+                      onChange={(e) => setRetailerName(e.target.value)}
+                      placeholder="Store Name"
+                      disabled={isAddingUrl}
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 disabled:opacity-50"
+                    />
+                  </div>
+                </div>
+                
+                {error && (
+                  <div className="mt-4 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                    <p className="text-sm text-red-400">{error}</p>
+                  </div>
+                )}
+                
+                <button
+                  onClick={handleAddByUrl}
+                  disabled={isAddingUrl || !retailerUrl.trim()}
+                  className="mt-6 w-full px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg font-medium hover:from-green-500 hover:to-emerald-500 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isAddingUrl ? (
+                    <>
+                      <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                      </svg>
+                      Adding & Enriching...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                      Add Retailer & Find Contacts
+                    </>
+                  )}
+                </button>
+                
+                <p className="mt-4 text-sm text-gray-500 text-center">
+                  We'll scrape the website to find contact emails, phone numbers, and other info
+                </p>
+              </div>
+            )}
+
+            {/* How URL Import Works */}
+            {!urlResult && (
+              <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-8">
+                <h3 className="text-lg font-semibold mb-4">How it works</h3>
+                <div className="space-y-4 text-gray-400">
+                  <div className="flex gap-3">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400 font-medium">
+                      1
+                    </div>
+                    <div>
+                      <p className="font-medium text-white mb-1">Paste the URL</p>
+                      <p className="text-sm">Enter the retailer's website URL (e.g., https://www.areboursparfums.it)</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400 font-medium">
+                      2
+                    </div>
+                    <div>
+                      <p className="font-medium text-white mb-1">Auto-Enrichment</p>
+                      <p className="text-sm">We crawl contact pages, footer, JS bundles to find emails</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center text-green-400 font-medium">
+                      3
+                    </div>
+                    <div>
+                      <p className="font-medium text-white mb-1">Added to Database</p>
+                      <p className="text-sm">Retailer is added to Airtable with all found contact info</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Email Import Mode */}
+        {importMode === "email" && (
+          <>
         {/* Import Success */}
         {importResults && (
           <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-6 mb-6">
@@ -344,6 +582,8 @@ export default function ImportPage() {
               </p>
             </div>
           </div>
+        )}
+          </>
         )}
       </div>
     </div>
