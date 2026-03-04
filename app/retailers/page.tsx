@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
-import { getAirtableRetailers, AirtableRetailer, generateCampaignsBulk, enrichRetailersBulk } from "@/lib/api"
+import { getAirtableRetailers, AirtableRetailer, generateCampaignsBulk, enrichRetailersBulk, enrichAllPending } from "@/lib/api"
 
 export default function RetailersPage() {
   const [allRetailers, setAllRetailers] = useState<AirtableRetailer[]>([])
@@ -13,6 +13,7 @@ export default function RetailersPage() {
   const [selectedRetailers, setSelectedRetailers] = useState<Set<string>>(new Set())
   const [generatingCampaigns, setGeneratingCampaigns] = useState(false)
   const [enriching, setEnriching] = useState(false)
+  const [enrichingAll, setEnrichingAll] = useState(false)
   const tableScrollRef = useRef<HTMLDivElement>(null)
   const topScrollRef = useRef<HTMLDivElement>(null)
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null)
@@ -182,6 +183,31 @@ export default function RetailersPage() {
     }
   }
 
+  const handleEnrichAllPending = async () => {
+    // Count pending retailers (have URL but no email)
+    const pendingCount = allRetailers.filter(r => 
+      (r.website_url || r.website) && !r.contact_emails
+    ).length
+
+    if (pendingCount === 0) {
+      alert('No retailers need enrichment. All retailers with URLs already have contact emails.')
+      return
+    }
+
+    if (!confirm(`Start enrichment for ${pendingCount} retailers with URLs but no contacts?\n\nThis runs in the background. You can refresh the page to see progress.`)) return
+
+    setEnrichingAll(true)
+    try {
+      const result = await enrichAllPending()
+      alert(`✅ Enrichment started!\n\n${result.message}\n\nRefresh the page periodically to see progress.`)
+    } catch (error: any) {
+      console.error('Failed to start enrichment:', error)
+      alert(`❌ Failed to start enrichment: ${error.message}`)
+    } finally {
+      setEnrichingAll(false)
+    }
+  }
+
   const countries = Array.from(new Set(allRetailers.map(r => r.country).filter((c): c is string => Boolean(c)))).sort()
   const statuses = Array.from(new Set(allRetailers.map(r => r.enrichment_status).filter((s): s is string => Boolean(s)))).sort()
   const relationships = Array.from(new Set(allRetailers.map(r => r.relationship_status).filter((r): r is string => Boolean(r)))).sort()
@@ -256,24 +282,35 @@ export default function RetailersPage() {
             </div>
 
             {/* Bulk Actions */}
-            {selectedRetailers.size > 0 && (
-              <div className="flex gap-3">
-                <button
-                  onClick={handleEnrichRetailers}
-                  disabled={enriching}
-                  className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-lg font-medium transition disabled:opacity-50"
-                >
-                  {enriching ? 'Enriching...' : `🔍 Enrich ${selectedRetailers.size}`}
-                </button>
-                <button
-                  onClick={handleGenerateCampaigns}
-                  disabled={generatingCampaigns}
-                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-lg font-medium transition disabled:opacity-50"
-                >
-                  {generatingCampaigns ? 'Generating...' : `✨ Generate Campaigns (${selectedRetailers.size})`}
-                </button>
-              </div>
-            )}
+            <div className="flex gap-3">
+              {/* Always show Enrich All Pending button */}
+              <button
+                onClick={handleEnrichAllPending}
+                disabled={enrichingAll}
+                className="px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 rounded-lg font-medium transition disabled:opacity-50"
+              >
+                {enrichingAll ? 'Starting...' : '⚡ Enrich All Pending'}
+              </button>
+              
+              {selectedRetailers.size > 0 && (
+                <>
+                  <button
+                    onClick={handleEnrichRetailers}
+                    disabled={enriching}
+                    className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-lg font-medium transition disabled:opacity-50"
+                  >
+                    {enriching ? 'Enriching...' : `🔍 Enrich ${selectedRetailers.size}`}
+                  </button>
+                  <button
+                    onClick={handleGenerateCampaigns}
+                    disabled={generatingCampaigns}
+                    className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-lg font-medium transition disabled:opacity-50"
+                  >
+                    {generatingCampaigns ? 'Generating...' : `✨ Generate Campaigns (${selectedRetailers.size})`}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
 

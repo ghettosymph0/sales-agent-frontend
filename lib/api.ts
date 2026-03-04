@@ -542,6 +542,15 @@ export async function enrichRetailersBulk(retailerIds: string[]) {
   return res.json();
 }
 
+export async function enrichAllPending() {
+  const res = await fetch(`${API_BASE}/api/retailers/enrich-all-pending`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+  if (!res.ok) throw new Error("Failed to start enrichment");
+  return res.json();
+}
+
 export async function updateCampaignDate(
   campaignId: string,
   field: string,
