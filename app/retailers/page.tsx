@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
-import { getAirtableRetailers, AirtableRetailer, generateCampaignsBulk, enrichRetailersBulk, enrichAllPending } from "@/lib/api"
+import { getAirtableRetailers, AirtableRetailer, generateCampaignsBulk, enrichRetailersBulk, enrichAllPending, findMissingUrls } from "@/lib/api"
 
 export default function RetailersPage() {
   const [allRetailers, setAllRetailers] = useState<AirtableRetailer[]>([])
@@ -14,6 +14,7 @@ export default function RetailersPage() {
   const [generatingCampaigns, setGeneratingCampaigns] = useState(false)
   const [enriching, setEnriching] = useState(false)
   const [enrichingAll, setEnrichingAll] = useState(false)
+  const [findingUrls, setFindingUrls] = useState(false)
   const tableScrollRef = useRef<HTMLDivElement>(null)
   const topScrollRef = useRef<HTMLDivElement>(null)
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null)
@@ -208,6 +209,31 @@ export default function RetailersPage() {
     }
   }
 
+  const handleFindMissingUrls = async () => {
+    // Count retailers without URLs
+    const missingCount = allRetailers.filter(r => 
+      !r.website_url && !r.website
+    ).length
+
+    if (missingCount === 0) {
+      alert('All retailers already have website URLs.')
+      return
+    }
+
+    if (!confirm(`Search for website URLs for ${missingCount} retailers?\n\nThis uses Google search to find retailer websites based on their name and location.\n\nRuns in the background.`)) return
+
+    setFindingUrls(true)
+    try {
+      const result = await findMissingUrls()
+      alert(`✅ URL search started!\n\n${result.message}\n\nRefresh the page periodically to see progress.`)
+    } catch (error: any) {
+      console.error('Failed to start URL search:', error)
+      alert(`❌ Failed to start URL search: ${error.message}`)
+    } finally {
+      setFindingUrls(false)
+    }
+  }
+
   const countries = Array.from(new Set(allRetailers.map(r => r.country).filter((c): c is string => Boolean(c)))).sort()
   const statuses = Array.from(new Set(allRetailers.map(r => r.enrichment_status).filter((s): s is string => Boolean(s)))).sort()
   const relationships = Array.from(new Set(allRetailers.map(r => r.relationship_status).filter((r): r is string => Boolean(r)))).sort()
@@ -283,7 +309,16 @@ export default function RetailersPage() {
 
             {/* Bulk Actions */}
             <div className="flex gap-3">
-              {/* Always show Enrich All Pending button */}
+              {/* Find Missing URLs button */}
+              <button
+                onClick={handleFindMissingUrls}
+                disabled={findingUrls}
+                className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-lg font-medium transition disabled:opacity-50"
+              >
+                {findingUrls ? 'Starting...' : '🔗 Find Missing URLs'}
+              </button>
+              
+              {/* Enrich All Pending button */}
               <button
                 onClick={handleEnrichAllPending}
                 disabled={enrichingAll}

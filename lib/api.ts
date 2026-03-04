@@ -551,6 +551,15 @@ export async function enrichAllPending() {
   return res.json();
 }
 
+export async function findMissingUrls() {
+  const res = await fetch(`${API_BASE}/api/retailers/find-missing-urls`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+  if (!res.ok) throw new Error("Failed to start URL search");
+  return res.json();
+}
+
 export async function updateCampaignDate(
   campaignId: string,
   field: string,
