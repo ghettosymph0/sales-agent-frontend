@@ -420,7 +420,14 @@ function CampaignCard({ campaign, calculateStatus, onViewDetails, onUpdateCampai
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-gray-700 transition">
       <div className="flex justify-between items-start mb-4">
         <div>
-          <h3 className="text-2xl font-semibold mb-2">{campaign.retailer_name}</h3>
+          <h3 className="text-2xl font-semibold mb-1">{campaign.retailer_name}</h3>
+          {campaign.retailer_email && (
+            <p className="text-blue-400 text-sm mb-1">
+              <a href={`mailto:${campaign.retailer_email}`} className="hover:underline">
+                {campaign.retailer_email}
+              </a>
+            </p>
+          )}
           <p className="text-gray-400 text-sm">{campaign.retailer_country} • {campaign.brand_name}</p>
         </div>
         <div className="flex gap-2">
@@ -851,7 +858,14 @@ function CampaignModal({ campaign, onClose }: { campaign: AirtableCampaign; onCl
         <div className="p-6 border-b border-gray-800">
           <div className="flex justify-between items-start">
             <div>
-              <h2 className="text-3xl font-bold mb-2">{campaign.retailer_name}</h2>
+              <h2 className="text-3xl font-bold mb-1">{campaign.retailer_name}</h2>
+              {campaign.retailer_email && (
+                <p className="text-blue-400 mb-1">
+                  <a href={`mailto:${campaign.retailer_email}`} className="hover:underline">
+                    {campaign.retailer_email}
+                  </a>
+                </p>
+              )}
               <p className="text-gray-400">{campaign.retailer_country} • {campaign.brand_name}</p>
             </div>
             <button onClick={onClose} className="text-gray-400 hover:text-white text-3xl">×</button>
