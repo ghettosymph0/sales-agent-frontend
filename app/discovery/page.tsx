@@ -172,6 +172,7 @@ export default function DiscoveryPage() {
                 <Link href="/discovery" className="text-white font-medium">Discovery</Link>
                 <Link href="/import" className="text-gray-400 hover:text-white transition">Import</Link>
                 <Link href="/analytics" className="text-gray-400 hover:text-white transition">Analytics</Link>
+                <Link href="/settings" className="text-gray-400 hover:text-white transition">Settings</Link>
               </div>
             </div>
           </div>
