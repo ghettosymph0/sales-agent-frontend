@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
-import { getAirtableRetailers, AirtableRetailer, generateCampaignsBulk, enrichRetailersBulk, enrichAllPending, findMissingUrls } from "@/lib/api"
+import { getAirtableRetailers, AirtableRetailer, generateCampaignsBulk, enrichRetailersBulk, enrichAllPending, findMissingUrls, generateCampaignForRetailer, regenerateCampaign } from "@/lib/api"
 
 export default function RetailersPage() {
   const [allRetailers, setAllRetailers] = useState<AirtableRetailer[]>([])
@@ -12,6 +12,7 @@ export default function RetailersPage() {
   const [total, setTotal] = useState(0)
   const [selectedRetailers, setSelectedRetailers] = useState<Set<string>>(new Set())
   const [generatingCampaigns, setGeneratingCampaigns] = useState(false)
+  const [generatingCampaign, setGeneratingCampaign] = useState<string | null>(null)
   const [enriching, setEnriching] = useState(false)
   const [enrichingAll, setEnrichingAll] = useState(false)
   const [findingUrls, setFindingUrls] = useState(false)
@@ -159,6 +160,38 @@ export default function RetailersPage() {
       alert(`❌ Failed to generate campaigns: ${error.message}`)
     } finally {
       setGeneratingCampaigns(false)
+    }
+  }
+
+  const handleGenerateSingleCampaign = async (retailer: AirtableRetailer) => {
+    if (!retailer.url) {
+      alert(`${retailer.name} has no website URL — cannot generate campaign.`)
+      return
+    }
+    setGeneratingCampaign(retailer.id)
+    try {
+      const result = await generateCampaignForRetailer(retailer.id)
+      alert(`✅ Campaign generated!\n\n${result.retailer_name}\n${result.variations_count} email variations + ${result.followups_count} follow-ups`)
+      await loadRetailers()
+    } catch (error: any) {
+      alert(`❌ Failed to generate campaign: ${error.message}`)
+    } finally {
+      setGeneratingCampaign(null)
+    }
+  }
+
+  const handleRegenerateCampaign = async (retailer: AirtableRetailer) => {
+    if (!retailer.campaign_id) return
+    if (!confirm(`Regenerate campaign for ${retailer.name}?\n\nThis will delete the old campaign and generate a fresh one with:\n• Proper greetings (Dear [Company] team,)\n• Correct product names only`)) return
+    setGeneratingCampaign(retailer.id)
+    try {
+      const result = await regenerateCampaign(retailer.campaign_id)
+      alert(`✅ Campaign regenerated!\n\n${result.retailer_name}\n${result.variations_count} email variations + ${result.followups_count} follow-ups`)
+      await loadRetailers()
+    } catch (error: any) {
+      alert(`❌ Failed to regenerate: ${error.message}`)
+    } finally {
+      setGeneratingCampaign(null)
     }
   }
 
@@ -483,6 +516,7 @@ export default function RetailersPage() {
                   <th className="px-4 py-4 text-left text-sm font-semibold text-gray-400 whitespace-nowrap">Relationship</th>
                   <th className="px-4 py-4 text-left text-sm font-semibold text-gray-400 whitespace-nowrap">Source</th>
                   <th className="px-4 py-4 text-left text-sm font-semibold text-gray-400 whitespace-nowrap">Status</th>
+                  <th className="px-4 py-4 text-left text-sm font-semibold text-gray-400 whitespace-nowrap">Campaign</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800">
@@ -568,6 +602,39 @@ export default function RetailersPage() {
                       }`}>
                         {retailer.enrichment_status || 'pending'}
                       </span>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      {generatingCampaign === retailer.id ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                          <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                          </svg>
+                          Working...
+                        </span>
+                      ) : retailer.has_campaign ? (
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
+                            ✓ Ready
+                          </span>
+                          <button
+                            onClick={() => handleRegenerateCampaign(retailer)}
+                            className="text-xs px-2.5 py-1 rounded-lg bg-gray-700 text-gray-300 hover:bg-gray-600 transition font-medium"
+                            title="Regenerate campaign with updated templates"
+                          >
+                            ⟳ Redo
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleGenerateSingleCampaign(retailer)}
+                          disabled={!retailer.url}
+                          className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                          title={!retailer.url ? "No website URL — cannot generate" : "Generate campaign"}
+                        >
+                          + Generate
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

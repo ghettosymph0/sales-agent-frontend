@@ -481,6 +481,8 @@ export interface AirtableRetailer {
   created_at: string | null;
   source: string | null;
   source_brands: string[];  // Multi-select brand names
+  has_campaign: boolean;
+  campaign_id: string | null;
 }
 
 export interface AirtableStats {
@@ -638,6 +640,47 @@ export async function enrichRetailerFromFacebook(retailerId: string, facebookUrl
   if (!res.ok) {
     const error = await res.json();
     throw new Error(error.detail || "Failed to enrich from Facebook");
+  }
+  return res.json();
+}
+
+export async function generateCampaignForRetailer(retailerId: string): Promise<{
+  success: boolean;
+  campaign_id: string;
+  retailer_name: string;
+  variations_count: number;
+  followups_count: number;
+  message: string;
+}> {
+  const res = await fetch(`${API_BASE}/api/campaigns/generate-for-retailer`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ retailer_id: retailerId }),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail || "Failed to generate campaign");
+  }
+  return res.json();
+}
+
+export async function regenerateCampaign(campaignId: string): Promise<{
+  success: boolean;
+  old_campaign_id: string;
+  new_campaign_id: string;
+  retailer_name: string;
+  variations_count: number;
+  followups_count: number;
+  message: string;
+}> {
+  const res = await fetch(`${API_BASE}/api/campaigns/regenerate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ campaign_id: campaignId }),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail || "Failed to regenerate campaign");
   }
   return res.json();
 }
