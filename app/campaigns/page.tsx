@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { getAirtableCampaigns, AirtableCampaign, updateCampaignDate, sendCampaignEmail, markCampaignResponded, getCampaignsCsvExportUrl } from "@/lib/api"
+import { getAirtableCampaigns, AirtableCampaign, updateCampaignDate, sendCampaignEmail, markCampaignResponded, getCampaignsCsvExportUrl, regenerateCampaign } from "@/lib/api"
 
 // Default follow-up interval in days
 const DEFAULT_FOLLOWUP_DAYS = 14
@@ -403,8 +403,8 @@ function CampaignCard({ campaign, calculateStatus, onViewDetails, onUpdateCampai
       const result = await sendCampaignEmail({
         campaign_id: campaign.id,
         variation: selectedVariant,
-        from_email: "alex@alexmonhart.com",
-        from_name: "Alex Monhart"
+        from_email: "adam@alexmonhart.com",
+        from_name: "Adam Hanula"
       })
       
       alert(`✅ Email sent successfully!\n\nTo: ${result.sent_to}\nSubject: ${result.subject}\n\nEmail ID: ${result.email_id}`)
