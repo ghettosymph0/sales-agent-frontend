@@ -57,10 +57,8 @@ export default function CampaignsPage() {
   }
 
   const hasEmailContent = (campaign: AirtableCampaign) => {
-    return !!(campaign.intro_email_a && campaign.intro_email_b && campaign.intro_email_c &&
-      campaign.intro_email_a.length > 50 && 
-      campaign.intro_email_b.length > 50 && 
-      campaign.intro_email_c.length > 50)
+    // Only check Variation A since we're only generating that now
+    return !!(campaign.intro_email_a && campaign.intro_email_a.length > 100)
   }
 
   const applyFilter = () => {
