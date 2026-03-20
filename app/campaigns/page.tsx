@@ -12,7 +12,7 @@ export default function CampaignsPage() {
   const [filteredCampaigns, setFilteredCampaigns] = useState<AirtableCampaign[]>([])
   const [selectedCampaign, setSelectedCampaign] = useState<AirtableCampaign | null>(null)
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<'all' | 'sent' | 'overdue' | 'waiting'>('all')
+  const [filter, setFilter] = useState<'all' | 'sent' | 'overdue' | 'waiting' | 'complete' | 'incomplete'>('all')
   const [followUpDays, setFollowUpDays] = useState(DEFAULT_FOLLOWUP_DAYS)
 
   useEffect(() => {
@@ -56,6 +56,13 @@ export default function CampaignsPage() {
     )
   }
 
+  const hasEmailContent = (campaign: AirtableCampaign) => {
+    return !!(campaign.intro_email_a && campaign.intro_email_b && campaign.intro_email_c &&
+      campaign.intro_email_a.length > 50 && 
+      campaign.intro_email_b.length > 50 && 
+      campaign.intro_email_c.length > 50)
+  }
+
   const applyFilter = () => {
     let filtered = [...campaigns]
     
@@ -69,6 +76,10 @@ export default function CampaignsPage() {
       })
     } else if (filter === 'waiting') {
       filtered = filtered.filter(c => c.sent_timestamp && !c.retailer_responded)
+    } else if (filter === 'complete') {
+      filtered = filtered.filter(c => hasEmailContent(c))
+    } else if (filter === 'incomplete') {
+      filtered = filtered.filter(c => !hasEmailContent(c))
     }
     
     setFilteredCampaigns(filtered)
@@ -275,6 +286,26 @@ export default function CampaignsPage() {
             }`}
           >
             Waiting Response ({campaigns.filter(c => c.sent_timestamp && !c.retailer_responded).length})
+          </button>
+          <button
+            onClick={() => setFilter('complete')}
+            className={`px-6 py-2 rounded-lg font-medium transition ${
+              filter === 'complete'
+                ? 'bg-gradient-to-r from-cyan-600 to-blue-600'
+                : 'bg-gray-800 hover:bg-gray-700'
+            }`}
+          >
+            ✓ Complete ({campaigns.filter(c => hasEmailContent(c)).length})
+          </button>
+          <button
+            onClick={() => setFilter('incomplete')}
+            className={`px-6 py-2 rounded-lg font-medium transition ${
+              filter === 'incomplete'
+                ? 'bg-gradient-to-r from-gray-600 to-slate-600'
+                : 'bg-gray-800 hover:bg-gray-700'
+            }`}
+          >
+            ⚠ Incomplete ({campaigns.filter(c => !hasEmailContent(c)).length})
           </button>
           
           {/* Follow-up Interval Setting */}
@@ -855,6 +886,19 @@ function CountdownTimer({ milliseconds, isOverdue }: { milliseconds: number; isO
 }
 
 function EmailVariationPreview({ variant, email, gradient }: { variant: string; email: string; gradient: string }) {
+  if (!email || email.length < 50) {
+    return (
+      <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+        <div className={`text-sm font-bold mb-2 bg-gradient-to-r ${gradient} bg-clip-text text-transparent`}>
+          Variation {variant}
+        </div>
+        <p className="text-xs text-gray-500 mb-1">Subject:</p>
+        <p className="text-sm font-medium mb-3 text-gray-600 italic">No email content</p>
+        <p className="text-xs text-gray-600 italic">Email variation not generated</p>
+      </div>
+    )
+  }
+
   const lines = email?.split('\n') || []
   const subject = lines[0]?.replace('Subject: ', '') || ''
   const body = lines.slice(2).join('\n').slice(0, 150)
