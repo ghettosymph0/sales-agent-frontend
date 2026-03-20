@@ -600,48 +600,21 @@ function CampaignCard({ campaign, calculateStatus, onViewDetails, onUpdateCampai
         </div>
       )}
 
-      {/* Email Variations */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        <EmailVariationPreview 
-          variant="A" 
-          email={campaign.intro_email_a}
-          gradient="from-blue-500 to-cyan-500"
-        />
-        <EmailVariationPreview 
-          variant="B" 
-          email={campaign.intro_email_b}
-          gradient="from-purple-500 to-pink-500"
-        />
-        <EmailVariationPreview 
-          variant="C" 
-          email={campaign.intro_email_c}
-          gradient="from-green-500 to-emerald-500"
-        />
-      </div>
-
       {/* Action Buttons */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+      <div className="flex gap-3">
         <button
-          onClick={() => setShowSendDialog(true)}
-          disabled={!campaign.retailer_email || sendingEmail}
-          className="py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-lg transition text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={onViewDetails}
+          className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-lg transition font-medium"
         >
-          {sendingEmail ? 'Sending...' : '📧 Send Email'}
+          View Campaign & Send Email →
         </button>
 
         <button
           onClick={handleMarkResponded}
           disabled={campaign.retailer_responded || markingResponded}
-          className="py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 rounded-lg transition text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 rounded-lg transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {markingResponded ? 'Updating...' : campaign.retailer_responded ? '✅ Responded' : '✓ Mark Responded'}
-        </button>
-
-        <button
-          onClick={onViewDetails}
-          className="py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition text-sm font-medium"
-        >
-          View Full Campaign →
         </button>
       </div>
 
