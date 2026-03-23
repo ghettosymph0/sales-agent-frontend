@@ -602,9 +602,20 @@ function CampaignCard({ campaign, calculateStatus, onViewDetails, onUpdateCampai
       <div className="flex gap-3">
         <button
           onClick={onViewDetails}
-          className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-lg transition font-medium"
+          className="flex-1 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition font-medium"
         >
-          View Campaign & Send Email →
+          View Full Campaign →
+        </button>
+
+        <button
+          onClick={() => setShowSendDialog(true)}
+          disabled={!campaign.retailer_email || sendingEmail}
+          className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-lg transition font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+          {sendingEmail ? 'Sending...' : 'Send Email'}
         </button>
 
         <button
@@ -888,13 +899,45 @@ function EmailVariationPreview({ variant, email, gradient }: { variant: string; 
 
 function CampaignModal({ campaign, onClose, followUpDays }: { campaign: AirtableCampaign; onClose: () => void; followUpDays: number }) {
   const [activeTab, setActiveTab] = useState<'intro' | 'followups'>('intro')
+  const [sendingEmail, setSendingEmail] = useState(false)
+  const [showSendDialog, setShowSendDialog] = useState(false)
+  const [selectedVariant, setSelectedVariant] = useState<"A" | "B" | "C">("A")
+
+  const handleSendEmail = async () => {
+    if (!campaign.retailer_email) {
+      alert('No email address found for this retailer. Please add contact email first.')
+      return
+    }
+
+    setSendingEmail(true)
+    try {
+      const result = await sendCampaignEmail({
+        campaign_id: campaign.id,
+        variation: selectedVariant,
+        from_email: "adam@alexmonhart.com",
+        from_name: "Adam Hanula"
+      })
+      
+      alert(`✅ Email sent successfully!\n\nTo: ${result.sent_to}\nSubject: ${result.subject}\n\nEmail ID: ${result.email_id}`)
+      setShowSendDialog(false)
+      onClose()
+      
+      // Reload campaigns to get updated data
+      window.location.reload()
+    } catch (error: any) {
+      console.error('Failed to send email:', error)
+      alert(`❌ Failed to send email: ${error.message}`)
+    } finally {
+      setSendingEmail(false)
+    }
+  }
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div className="bg-gray-900 border border-gray-800 rounded-xl max-w-6xl w-full max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="p-6 border-b border-gray-800">
           <div className="flex justify-between items-start">
-            <div>
+            <div className="flex-1">
               <h2 className="text-3xl font-bold mb-1">{campaign.retailer_name}</h2>
               {campaign.retailer_email && (
                 <p className="text-blue-400 mb-1">
@@ -905,9 +948,67 @@ function CampaignModal({ campaign, onClose, followUpDays }: { campaign: Airtable
               )}
               <p className="text-gray-400">{campaign.retailer_country} • {campaign.brand_name}</p>
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-white text-3xl">×</button>
+            <div className="flex gap-3 items-start">
+              <button
+                onClick={() => setShowSendDialog(true)}
+                disabled={!campaign.retailer_email || sendingEmail}
+                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-lg transition font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                Send Email
+              </button>
+              <button onClick={onClose} className="text-gray-400 hover:text-white text-3xl">×</button>
+            </div>
           </div>
         </div>
+
+        {/* Send Email Dialog */}
+        {showSendDialog && (
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setShowSendDialog(false)}>
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-xl font-bold mb-4">Send Email</h3>
+              <p className="text-gray-400 mb-4">
+                To: <span className="text-white font-medium">{campaign.retailer_email}</span>
+              </p>
+              <div className="mb-6">
+                <label className="block text-sm text-gray-400 mb-2">Choose Email Variant:</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['A', 'B', 'C'] as const).map((variant) => (
+                    <button
+                      key={variant}
+                      onClick={() => setSelectedVariant(variant)}
+                      className={`py-2 px-4 rounded-lg font-medium transition ${
+                        selectedVariant === variant
+                          ? 'bg-gradient-to-r from-blue-600 to-purple-600'
+                          : 'bg-gray-800 hover:bg-gray-700'
+                      }`}
+                    >
+                      Variant {variant}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleSendEmail}
+                  disabled={sendingEmail}
+                  className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-lg font-medium transition disabled:opacity-50"
+                >
+                  {sendingEmail ? 'Sending...' : 'Send Now'}
+                </button>
+                <button
+                  onClick={() => setShowSendDialog(false)}
+                  disabled={sendingEmail}
+                  className="px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg font-medium transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="flex border-b border-gray-800">
           <button
