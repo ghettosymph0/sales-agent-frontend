@@ -7,6 +7,7 @@ import { getAirtableStats, AirtableStats } from "@/lib/api"
 export default function OverviewPage() {
   const [stats, setStats] = useState<AirtableStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     loadStats()
@@ -14,17 +15,19 @@ export default function OverviewPage() {
 
   const loadStats = async () => {
     setLoading(true)
+    setError(null)
     try {
       const data = await getAirtableStats()
       setStats(data)
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to load stats:", error)
+      setError(error?.message || "Failed to load dashboard data")
     } finally {
       setLoading(false)
     }
   }
 
-  if (loading || !stats) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
@@ -41,6 +44,32 @@ export default function OverviewPage() {
             </svg>
           </div>
           <p className="text-gray-400">Loading dashboard...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !stats) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-6">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold mb-4 text-white">Unable to Load Dashboard</h2>
+          <p className="text-gray-400 mb-6">{error || "The backend API is temporarily unavailable. This might be due to Airtable rate limiting."}</p>
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={loadStats}
+              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg font-medium hover:from-blue-500 hover:to-purple-500 transition"
+            >
+              Try Again
+            </button>
+            <Link
+              href="/campaigns"
+              className="px-6 py-3 bg-gray-800 rounded-lg font-medium hover:bg-gray-700 transition"
+            >
+              Go to Campaigns
+            </Link>
+          </div>
         </div>
       </div>
     )
