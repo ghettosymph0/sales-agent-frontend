@@ -483,6 +483,17 @@ export interface AirtableRetailer {
   source_brands: string[];  // Multi-select brand names
   has_campaign: boolean;
   campaign_id: string | null;
+  // Strategic fields (Alex's request)
+  store_type: string | null;
+  fit_score: number | null;
+  strategic_priority: string | null;
+  city_priority: number | null;
+  strategic_status: string | null;
+  strategic_notes: string | null;
+  products_suitable: string[];
+  target_contact_date: string | null;
+  last_contact_date: string | null;
+  connection_type: string | null;
 }
 
 export interface AirtableStats {
