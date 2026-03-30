@@ -529,6 +529,27 @@ export async function getAirtableRetailers(
   return res.json();
 }
 
+export interface RetailerStrategicUpdate {
+  store_type?: string;
+  fit_score?: number;
+  strategic_priority?: string;
+  strategic_status?: string;
+  strategic_notes?: string;
+}
+
+export async function updateRetailerStrategic(
+  retailerId: string,
+  updates: RetailerStrategicUpdate
+): Promise<{ success: boolean; updated_fields: string[] }> {
+  const res = await fetch(`${API_BASE}/api/airtable/retailers/${retailerId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(updates),
+  });
+  if (!res.ok) throw new Error("Failed to update retailer");
+  return res.json();
+}
+
 export async function getAirtableStats(): Promise<AirtableStats> {
   const res = await fetch(`${API_BASE}/api/airtable/stats`);
   if (!res.ok) throw new Error("Failed to fetch stats from Airtable");
