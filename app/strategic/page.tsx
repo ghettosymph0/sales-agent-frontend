@@ -106,8 +106,8 @@ export default function StrategicRetailersPage() {
   }
 
   // Get unique values for filters
-  const cities = Array.from(new Set(retailers.map(r => r.city).filter(Boolean))).sort()
-  const storeTypes = Array.from(new Set(retailers.map(r => r.store_type).filter(Boolean))).sort()
+  const cities = Array.from(new Set(retailers.map(r => r.city).filter((c): c is string => Boolean(c)))).sort()
+  const storeTypes = Array.from(new Set(retailers.map(r => r.store_type).filter((t): t is string => Boolean(t)))).sort()
 
   if (loading) {
     return (

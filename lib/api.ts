@@ -530,11 +530,11 @@ export async function getAirtableRetailers(
 }
 
 export interface RetailerStrategicUpdate {
-  store_type?: string;
-  fit_score?: number;
-  strategic_priority?: string;
-  strategic_status?: string;
-  strategic_notes?: string;
+  store_type?: string | null;
+  fit_score?: number | null;
+  strategic_priority?: string | null;
+  strategic_status?: string | null;
+  strategic_notes?: string | null;
 }
 
 export async function updateRetailerStrategic(
