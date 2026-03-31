@@ -429,7 +429,24 @@ export default function RetailersPage() {
 
         {/* Filters */}
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
-          <h3 className="text-lg font-semibold mb-4">Filters</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">Filters</h3>
+            <button
+              onClick={() => {
+                // Filter retailers added today
+                const today = new Date().toISOString().split('T')[0]
+                const todayRetailers = allRetailers.filter(r => {
+                  if (!r.created_at) return false
+                  const createdDate = r.created_at.split('T')[0]
+                  return createdDate === today
+                })
+                setFilteredRetailers(todayRetailers)
+              }}
+              className="px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg text-sm font-medium transition"
+            >
+              🆕 Show Today's Additions ({allRetailers.filter(r => r.created_at && r.created_at.split('T')[0] === new Date().toISOString().split('T')[0]).length})
+            </button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm text-gray-400 mb-2">Country</label>
